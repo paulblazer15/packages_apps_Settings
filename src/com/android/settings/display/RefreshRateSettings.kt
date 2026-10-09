@@ -80,8 +80,10 @@ import com.android.axion.compose.preferences.SwitchPreference
 import com.android.axion.compose.theme.AxionTheme
 import com.android.settings.R
 import kotlin.math.absoluteValue
+import kotlin.math.roundToInt
 
 private const val DYNAMIC_PEAK_REFRESH_RATE = "dynamic_peak_refresh_rate"
+private const val MIN_USER_SELECTABLE_REFRESH_RATE_HZ = 60
 
 class RefreshRateSettings : Fragment() {
 
@@ -487,12 +489,17 @@ class RefreshRateSettings : Fragment() {
         val modes = mutableListOf<Pair<Int, String>>()
         val customList = SystemProperties.get("persist.sys.display_refresh_rates_list", "")
         val refreshRates = if (customList.isNotEmpty()) {
-            customList.split(",").mapNotNull { it.trim().toFloatOrNull()?.toInt() }.distinct().sorted()
+            customList.split(",").mapNotNull {
+                it.trim().toFloatOrNull()?.roundToInt()
+            }
         } else {
             val displayManager = context.getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
             val display = displayManager.getDisplay(Display.DEFAULT_DISPLAY)
-            display?.supportedModes?.map { it.refreshRate.toInt() }?.distinct()?.sorted() ?: emptyList()
+            display?.supportedModes?.map { it.refreshRate.roundToInt() } ?: emptyList()
         }
+            .filter { it >= MIN_USER_SELECTABLE_REFRESH_RATE_HZ }
+            .distinct()
+            .sorted()
         val supportsDynamic = SystemProperties.getBoolean(
             "ro.surface_flinger.use_content_detection_for_refresh_rate", false
         )

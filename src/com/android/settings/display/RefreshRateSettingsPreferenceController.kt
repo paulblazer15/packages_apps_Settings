@@ -22,6 +22,9 @@ import android.provider.Settings
 import android.view.Display
 import com.android.settings.R
 import com.android.settings.core.BasePreferenceController
+import kotlin.math.roundToInt
+
+private const val MIN_USER_SELECTABLE_REFRESH_RATE_HZ = 60
 
 class RefreshRateSettingsPreferenceController(
     context: Context,
@@ -33,16 +36,20 @@ class RefreshRateSettingsPreferenceController(
 
     private fun getRefreshRates(): List<Int> {
         val customList = SystemProperties.get("persist.sys.display_refresh_rates_list", "")
-        return if (customList.isNotEmpty()) {
-            customList.split(",").mapNotNull { it.trim().toFloatOrNull()?.toInt() }.distinct().sorted()
+        val refreshRates = if (customList.isNotEmpty()) {
+            customList.split(",").mapNotNull {
+                it.trim().toFloatOrNull()?.roundToInt()
+            }
         } else {
             val display = displayManager.getDisplay(Display.DEFAULT_DISPLAY)
             display?.supportedModes
-                ?.map { it.refreshRate.toInt() }
-                ?.distinct()
-                ?.sorted()
+                ?.map { it.refreshRate.roundToInt() }
                 ?: emptyList()
         }
+        return refreshRates
+            .filter { it >= MIN_USER_SELECTABLE_REFRESH_RATE_HZ }
+            .distinct()
+            .sorted()
     }
 
     private fun getModeMap(): Map<Int, String> {
